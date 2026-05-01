@@ -11,7 +11,7 @@ const ProductDetail = () => {
     const navigate = useNavigate()
 
     useEffect(() => {
-        fetch(`http://localhost:5000/api/products/${id}`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/products/${id}`, {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then(res => res.json())

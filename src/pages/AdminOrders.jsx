@@ -7,7 +7,7 @@ const AdminOrders = () => {
 
     useEffect(() => {
         const token = localStorage.getItem('token')
-        fetch('http://localhost:5000/api/orders', {
+        fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
             headers: { Authorization: `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -22,7 +22,7 @@ const AdminOrders = () => {
         setDelivering(id)
         const token = localStorage.getItem('token')
         try {
-            const res = await fetch(`http://localhost:5000/api/orders/${id}/deliver`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders/${id}/deliver`, {
                 method: 'PUT',
                 headers: { Authorization: `Bearer ${token}` }
             })
