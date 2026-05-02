@@ -6,20 +6,27 @@ const Home = () => {
     const [searchTerm, setSearchTerm] = useState('')
     const [addedMap, setAddedMap] = useState({})
     const [toast, setToast] = useState('')
+    const [loading, setLoading] = useState(true)
     const navigate = useNavigate()
 
     useEffect(() => {
         const fetchProducts = async () => {
-            const token = localStorage.getItem('token')
-            const headers = { 'Content-Type': 'application/json' }
-            if (token) headers.Authorization = `Bearer ${token}`
+            try {
+                const token = localStorage.getItem('token')
+                const headers = { 'Content-Type': 'application/json' }
+                if (token) headers.Authorization = `Bearer ${token}`
 
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
-                method: 'GET',
-                headers
-            })
-            const data = await res.json()
-            if (Array.isArray(data)) setProducts(data)
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
+                    method: 'GET',
+                    headers
+                })
+                const data = await res.json()
+                if (Array.isArray(data)) setProducts(data)
+            } catch (err) {
+                console.error(err)
+            } finally {
+                setLoading(false)
+            }
         }
         fetchProducts()
     }, [])
@@ -49,7 +56,6 @@ const Home = () => {
         setTimeout(() => setToast(''), 2500)
     }
 
-
     return (
         <div className="min-h-screen bg-neutral-50">
             {toast && (
@@ -71,7 +77,11 @@ const Home = () => {
                     />
                 </div>
 
-                {filteredProducts.length === 0 ? (
+                {loading ? (
+                    <div className="flex justify-center py-32">
+                        <p className="text-neutral-400 text-sm">Loading products...</p>
+                    </div>
+                ) : filteredProducts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-32 text-center">
                         <p className="text-neutral-400 text-sm">No products found.</p>
                     </div>
