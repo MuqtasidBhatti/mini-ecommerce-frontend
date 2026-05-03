@@ -51,7 +51,7 @@ const ProductDetail = () => {
         <div className="min-h-screen bg-neutral-50">
 
             {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm px-5 py-3 rounded-xl shadow-lg transition-all duration-300">
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-indigo-700 text-white text-sm px-5 py-3 rounded-xl shadow-lg transition-all duration-300">
                     {toast}
                 </div>
             )}
