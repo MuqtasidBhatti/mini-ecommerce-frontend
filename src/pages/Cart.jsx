@@ -129,13 +129,21 @@ const Cart = () => {
                                     </div>
                                     <div className="flex justify-between text-neutral-500">
                                         <span>Shipping</span>
-                                        <span className="text-green-600">Free</span>
+                                        <span className={total > 100 ? 'text-green-600' : ''}>
+                                            {total > 100 ? 'Free' : '$10.00'}
+                                        </span>
                                     </div>
                                     <div className="border-t border-neutral-100 mt-2 pt-3 flex justify-between font-semibold text-neutral-900">
                                         <span>Total</span>
-                                        <span>${total.toFixed(2)}</span>
+                                        <span>${(total > 100 ? total : total + 10).toFixed(2)}</span>
                                     </div>
                                 </div>
+
+                                {total <= 100 && (
+                                    <p className="text-xs text-neutral-400 mt-3 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100">
+                                        Add ${(100 - total).toFixed(2)} more to get free shipping
+                                    </p>
+                                )}
 
                                 <button
                                     onClick={() => navigate('/checkout')}
