@@ -2,7 +2,7 @@
 
 React frontend for the Mini E-Commerce store. Built with React, Vite, and Tailwind CSS.
 
-![Home Page](screenshots/home.png)
+![Home Page](screenshots/Home.png)
 
 ## Features
 
