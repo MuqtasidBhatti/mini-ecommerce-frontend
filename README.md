@@ -25,6 +25,7 @@ React, Vite, React Router, Tailwind CSS, Context API
 
 ## Folder Structure
 
+```
 ├── src/
 │   ├── components/       # Navbar, AdminRoute, PrivateRoute
 │   ├── pages/            # Home, Cart, Checkout, Login, Register, MyOrders, OrderConfirmation, ProductDetails, AdminOrders
@@ -34,6 +35,7 @@ React, Vite, React Router, Tailwind CSS, Context API
 ├── public/
 ├── .env
 └── index.html
+```
 
 ## Pages
 
