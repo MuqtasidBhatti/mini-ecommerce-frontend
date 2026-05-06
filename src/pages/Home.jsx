@@ -10,24 +10,31 @@ const Home = () => {
     const navigate = useNavigate()
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const token = localStorage.getItem('token')
-                const headers = { 'Content-Type': 'application/json' }
-                if (token) headers.Authorization = `Bearer ${token}`
+        const fetchProducts = async (retries = 3) => {
+    try {
+        const token = localStorage.getItem('token')
+        const headers = { 'Content-Type': 'application/json' }
+        if (token) headers.Authorization = `Bearer ${token}`
 
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
-                    method: 'GET',
-                    headers
-                })
-                const data = await res.json()
-                if (Array.isArray(data)) setProducts(data)
-            } catch (err) {
-                console.error(err)
-            } finally {
-                setLoading(false)
-            }
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/products`, {
+            method: 'GET',
+            headers
+        })
+
+        if (!res.ok) throw new Error('Server error')
+
+        const data = await res.json()
+        if (Array.isArray(data)) setProducts(data)
+    } catch (err) {
+        if (retries > 0) {
+            setTimeout(() => fetchProducts(retries - 1), 2000)
+        } else {
+            console.error(err)
         }
+    } finally {
+        setLoading(false)
+    }
+}
         fetchProducts()
     }, [])
 
