@@ -1,9 +1,11 @@
 import { createContext, useContext, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const AuthModalContext = createContext()
 
 export const AuthModalProvider = ({ children }) => {
     const [showModal, setShowModal] = useState(false)
+    const navigate = useNavigate()
 
     return (
         <AuthModalContext.Provider value={{ showModal, setShowModal }}>
@@ -22,7 +24,10 @@ export const AuthModalProvider = ({ children }) => {
                             </a>
                         </div>
                         <button
-                            onClick={() => setShowModal(false)}
+                            onClick={() => {
+                                setShowModal(false)
+                                navigate('/')
+                            }}
                             className="text-sm text-neutral-400 hover:text-neutral-900 text-center cursor-pointer"
                         >
                             Cancel
