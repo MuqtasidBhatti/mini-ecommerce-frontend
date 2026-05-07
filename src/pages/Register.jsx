@@ -16,7 +16,9 @@ const Register = () => {
     })
     const data = await res.json()
     if (res.ok) {
-      navigate('/login')
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      navigate('/')
     } else {
       setError(data.message || 'Registration failed. Please try again.')
     }
