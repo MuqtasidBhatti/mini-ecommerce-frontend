@@ -30,7 +30,7 @@ export const AuthModalProvider = ({ children }) => {
                             }}
                             className="text-sm text-neutral-400 hover:text-neutral-900 text-center cursor-pointer"
                         >
-                            Cancel
+                            Back To Home
                         </button>
                     </div>
                 </div>
