@@ -14,6 +14,7 @@ const CheckoutForm = () => {
     const [shipping, setShipping] = useState({ address: '', city: '', postalCode: '', country: '' })
     const [placing, setPlacing] = useState(false)
     const [errors, setErrors] = useState({})
+    const [paymentMethod, setPaymentMethod] = useState('COD')
 
     const [cartItems, setCartItems] = useState(
         JSON.parse(localStorage.getItem('cart')) || []
@@ -41,66 +42,45 @@ const CheckoutForm = () => {
     const handlePlaceOrder = async () => {
         if (placing) return
         if (!validate()) return
-        if (!stripe || !elements) return
         setPlacing(true)
 
         const token = localStorage.getItem('token')
 
         try {
-        
-            const intentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/create-intent`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ amount: Math.round(totalPrice * 100) }) // Stripe expects cents
-            })
+            if (paymentMethod === 'Card') {
+                // Stripe flow
+                if (!stripe || !elements) {
+                    setPlacing(false)
+                    return
 
-            const { clientSecret } = await intentRes.json()
-
-          
-            const result = await stripe.confirmCardPayment(clientSecret, {
-                payment_method: {
-                    card: elements.getElement(CardElement)
                 }
-            })
 
-            if (result.error) {
-                alert(result.error.message)
-                setPlacing(false)
-                return
-            }
-
-          
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    orderItems: cartItems.map(item => ({
-                        product: item._id,
-                        name: item.name,
-                        qty: item.qty || 1,
-                        image: item.image,
-                        price: item.price
-                    })),
-                    shippingAddress: shipping,
-                    paymentMethod: 'Stripe',
-                    itemsPrice,
-                    shippingPrice,
-                    taxPrice,
-                    totalPrice,
-                    paymentIntentId: result.paymentIntent.id
+                const intentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/create-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ amount: Math.round(totalPrice * 100) })
                 })
-            })
 
-            const data = await res.json()
-            if (data._id) {
-                localStorage.removeItem('cart')
-                navigate(`/order/${data._id}`)
+                const { clientSecret } = await intentRes.json()
+
+                const result = await stripe.confirmCardPayment(clientSecret, {
+                    payment_method: { card: elements.getElement(CardElement) }
+                })
+
+                if (result.error) {
+                    alert(result.error.message)
+                    setPlacing(false)
+                    return
+                }
+
+                await createOrder(token, 'Stripe', result.paymentIntent.id)
+
+            } else {
+                // COD flow — no Stripe needed
+                await createOrder(token, 'COD', null)
             }
         } catch (err) {
             console.error(err)
@@ -108,11 +88,43 @@ const CheckoutForm = () => {
         }
     }
 
+    // Pull order creation into a helper to avoid repeating it
+    const createOrder = async (token, method, paymentIntentId) => {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                orderItems: cartItems.map(item => ({
+                    product: item._id,
+                    name: item.name,
+                    qty: item.qty || 1,
+                    image: item.image,
+                    price: item.price
+                })),
+                shippingAddress: shipping,
+                paymentMethod: method,
+                itemsPrice,
+                shippingPrice,
+                taxPrice,
+                totalPrice,
+                paymentIntentId
+            })
+        })
+
+        const data = await res.json()
+        if (data._id) {
+            localStorage.removeItem('cart')
+            navigate(`/order/${data._id}`)
+        }
+    }
+
     const inputClass = (field) =>
-        `w-full px-4 py-3 rounded-xl border text-sm text-neutral-800 placeholder:text-neutral-400 bg-neutral-50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-150 ${
-            errors[field]
-                ? 'border-red-300 focus:ring-red-400'
-                : 'border-neutral-200 focus:ring-neutral-900'
+        `w-full px-4 py-3 rounded-xl border text-sm text-neutral-800 placeholder:text-neutral-400 bg-neutral-50 focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-150 ${errors[field]
+            ? 'border-red-300 focus:ring-red-400'
+            : 'border-neutral-200 focus:ring-neutral-900'
         }`
 
     return (
@@ -173,24 +185,62 @@ const CheckoutForm = () => {
                         </div>
 
                         {/* Card details — NEW */}
+                        {/* Payment method selector */}
                         <div className="bg-white border border-neutral-200 rounded-2xl p-6">
-                            <h2 className="text-sm font-semibold text-neutral-900 mb-5">Card details</h2>
-                            <div className="px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50">
-                                <CardElement
-                                    options={{
-                                        style: {
-                                            base: {
-                                                fontSize: '14px',
-                                                color: '#171717',
-                                                '::placeholder': { color: '#a3a3a3' }
-                                            },
-                                            invalid: { color: '#f87171' }
-                                        }
-                                    }}
-                                />
+                            <h2 className="text-sm font-semibold text-neutral-900 mb-5">Payment method</h2>
+                            <div className="flex flex-col gap-3">
+
+                                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-indigo-500 bg-indigo-50' : 'border-neutral-200'
+                                    }`}>
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        value="COD"
+                                        checked={paymentMethod === 'COD'}
+                                        onChange={() => setPaymentMethod('COD')}
+                                        className="accent-indigo-600"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-medium text-neutral-900">Cash on delivery</p>
+                                        <p className="text-xs text-neutral-400 mt-0.5">Pay when your order arrives</p>
+                                    </div>
+                                </label>
+
+                                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'Card' ? 'border-indigo-500 bg-indigo-50' : 'border-neutral-200'
+                                    }`}>
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        value="Card"
+                                        checked={paymentMethod === 'Card'}
+                                        onChange={() => setPaymentMethod('Card')}
+                                        className="accent-indigo-600"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-medium text-neutral-900">Card payment</p>
+                                        <p className="text-xs text-neutral-400 mt-0.5">Pay securely via Stripe</p>
+                                    </div>
+                                </label>
+
+                                {/* Show card input only when Card is selected */}
+                                {paymentMethod === 'Card' && (
+                                    <div className="px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50 mt-1">
+                                        <CardElement
+                                            options={{
+                                                style: {
+                                                    base: {
+                                                        fontSize: '14px',
+                                                        color: '#171717',
+                                                        '::placeholder': { color: '#a3a3a3' }
+                                                    },
+                                                    invalid: { color: '#f87171' }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         </div>
-
                         {/* Order items */}
                         <div className="bg-white border border-neutral-200 rounded-2xl p-6">
                             <h2 className="text-sm font-semibold text-neutral-900 mb-5">
@@ -251,11 +301,10 @@ const CheckoutForm = () => {
                             <button
                                 onClick={handlePlaceOrder}
                                 disabled={placing}
-                                className={`mt-5 w-full py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${
-                                    placing
-                                        ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
-                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                }`}
+                                className={`mt-5 w-full py-3 rounded-xl text-sm font-medium transition-all duration-150 cursor-pointer ${placing
+                                    ? 'bg-neutral-200 text-neutral-400 cursor-not-allowed'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    }`}
                             >
                                 {placing ? (
                                     <span className="flex items-center justify-center gap-2">
@@ -265,9 +314,11 @@ const CheckoutForm = () => {
                                 ) : 'Place order'}
                             </button>
 
-                            <p className="text-xs text-neutral-400 text-center mt-3">
-                                Secured by Stripe
-                            </p>
+                            {paymentMethod === 'Card' && (
+                                <p className="text-xs text-neutral-400 text-center mt-3">
+                                    Secured by Stripe
+                                </p>
+                            )}
                         </div>
                     </div>
 
