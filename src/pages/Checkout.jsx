@@ -189,9 +189,6 @@ const CheckoutForm = () => {
                                     }}
                                 />
                             </div>
-                            <p className="text-xs text-neutral-400 mt-3">
-                                Test card: 4242 4242 4242 4242 — any future date — any CVC
-                            </p>
                         </div>
 
                         {/* Order items */}
