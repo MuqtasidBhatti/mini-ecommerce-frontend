@@ -1,11 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
-const Checkout = () => {
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY)
+
+
+const CheckoutForm = () => {
+    const stripe = useStripe()
+    const elements = useElements()
+    const navigate = useNavigate()
+
     const [shipping, setShipping] = useState({ address: '', city: '', postalCode: '', country: '' })
     const [placing, setPlacing] = useState(false)
     const [errors, setErrors] = useState({})
-    const navigate = useNavigate()
 
     const [cartItems, setCartItems] = useState(
         JSON.parse(localStorage.getItem('cart')) || []
@@ -33,10 +41,38 @@ const Checkout = () => {
     const handlePlaceOrder = async () => {
         if (placing) return
         if (!validate()) return
+        if (!stripe || !elements) return
         setPlacing(true)
 
         const token = localStorage.getItem('token')
+
         try {
+        
+            const intentRes = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/create-intent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ amount: Math.round(totalPrice * 100) }) // Stripe expects cents
+            })
+
+            const { clientSecret } = await intentRes.json()
+
+          
+            const result = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: elements.getElement(CardElement)
+                }
+            })
+
+            if (result.error) {
+                alert(result.error.message)
+                setPlacing(false)
+                return
+            }
+
+          
             const res = await fetch(`${import.meta.env.VITE_API_URL}/api/orders`, {
                 method: 'POST',
                 headers: {
@@ -52,13 +88,15 @@ const Checkout = () => {
                         price: item.price
                     })),
                     shippingAddress: shipping,
-                    paymentMethod: 'PayPal',
+                    paymentMethod: 'Stripe',
                     itemsPrice,
                     shippingPrice,
                     taxPrice,
-                    totalPrice
+                    totalPrice,
+                    paymentIntentId: result.paymentIntent.id
                 })
             })
+
             const data = await res.json()
             if (data._id) {
                 localStorage.removeItem('cart')
@@ -88,7 +126,7 @@ const Checkout = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {/* Left: Shipping + Items */}
+                    {/* Left: Shipping + Card + Items */}
                     <div className="lg:col-span-2 flex flex-col gap-5">
 
                         {/* Shipping form */}
@@ -132,6 +170,28 @@ const Checkout = () => {
                                     {errors.country && <p className="text-xs text-red-400 mt-1 ml-1">{errors.country}</p>}
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Card details — NEW */}
+                        <div className="bg-white border border-neutral-200 rounded-2xl p-6">
+                            <h2 className="text-sm font-semibold text-neutral-900 mb-5">Card details</h2>
+                            <div className="px-4 py-3 rounded-xl border border-neutral-200 bg-neutral-50">
+                                <CardElement
+                                    options={{
+                                        style: {
+                                            base: {
+                                                fontSize: '14px',
+                                                color: '#171717',
+                                                '::placeholder': { color: '#a3a3a3' }
+                                            },
+                                            invalid: { color: '#f87171' }
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <p className="text-xs text-neutral-400 mt-3">
+                                Test card: 4242 4242 4242 4242 — any future date — any CVC
+                            </p>
                         </div>
 
                         {/* Order items */}
@@ -207,12 +267,24 @@ const Checkout = () => {
                                     </span>
                                 ) : 'Place order'}
                             </button>
+
+                            <p className="text-xs text-neutral-400 text-center mt-3">
+                                Secured by Stripe
+                            </p>
                         </div>
                     </div>
 
                 </div>
             </div>
         </div>
+    )
+}
+
+const Checkout = () => {
+    return (
+        <Elements stripe={stripePromise}>
+            <CheckoutForm />
+        </Elements>
     )
 }
 
